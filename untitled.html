@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <!-- Настройка правильного масштаба для экранов смартфонов -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ForteBank — Мобильное приложение</title>
+
+    <!-- Подключаем библиотеку иконок FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* === CSS: СТИЛИ И ОФОРМЛЕНИЕ === */
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: #e4e6eb;
+            display: flex;
+            justify-content: center;
+        }
+
+        /* Главный контейнер размером с экран телефона */
+        .app-container {
+            width: 100%;
+            max-width: 414px;
+            min-height: 100vh;
+            background-color: #f4f5f7;
+            position: relative;
+            padding-bottom: 85px;
+            box-shadow: 0 0 25px rgba(0,0,0,0.15);
+            overflow-x: hidden;
+        }
+
+        /* ==========================================
+           ЭКРАН ВВОДА И УСТАНОВКИ ПИН-КОДА
+           ========================================== */
+        .pin-screen {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            max-width: 414px;
+            height: 100vh;
+            background: linear-gradient(160deg, #1f1a24 0%, #9e0059 100%);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 50px 20px 35px;
+            color: white;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        /* Класс для плавного скрытия экрана пароля после успешного входа */
+        .pin-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(1.05);
+        }
+
+        .pin-header {
+            text-align: center;
+        }
+
+        .pin-logo {
+            font-size: 32px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-bottom: 25px;
+        }
+
+        .pin-title {
+            font-size: 17px;
+            font-weight: 500;
+            opacity: 0.95;
+            min-height: 24px;
+        }
+
+        /* 4 кружочка для отображения введенных цифр */
+        .pin-dots {
+            display: flex;
+            gap: 18px;
+            margin: 30px 0;
+        }
+
+        .dot {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: 2px solid rgba(255, 255, 255, 0.6);
+            transition: all 0.2s ease;
+        }
+
+        /* Закрашенный кружочек при нажатии цифры */
+        .dot.active {
+            background-color: #ffffff;
+            border-color: #ffffff;
+            transform: scale(1.15);
+        }
+
+        /* Красный кружочек при ошибке */
+        .dot.error {
+            background-color: #ff4d4f;
+            border-color: #ff4d4f;
+        }
+
+        /* Цифровая клавиатура (сетка 3 колонки) */
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px 28px;
+            margin-bottom: 10px;
+        }
+
+        .num-btn {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 26px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.15s;
+        }
+
+        .num-btn:active {
+            background-color: rgba(255, 255, 255, 0.35);
+        }
+
+        .num-btn.action-key {
+            background: transparent;
+            border: none;
+            font-size: 18px;
+            opacity: 0.85;
+        }
+
+        .reset-pin-link {
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: underline;
+            background: none;
+            border: none;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        /* ==========================================
+           ГЛАВНЫЙ ЭКРАН БАНКА
+           ========================================== */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            background-color: #ffffff;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background-color: #9e0059;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .user-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .header-icons {
+            display: flex;
+            gap: 18px;
+            color: #4a4a4a;
+            font-size: 19px;
+            cursor: pointer;
+        }
+
+        /* ВИРТУАЛЬНАЯ КАРТА FORTE */
+        .card-section {
+            padding: 16px 20px;
+        }
+
+        .virtual-card {
+            background: linear-gradient(135deg, #2b2d42 0%, #9e0059 100%);
+            border-radius: 20px;
+            padding: 22px;
+            color: white;
+            box-shadow: 0 10px 20px rgba(158, 0, 89, 0.25);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 15px;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        /* Правый верхний угол карты: логотип + маленький карандашик */
+        .card-top-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .card-logo {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+        }
+
+        /* Маленький карандаш в углу для изменения суммы */
+        .corner-edit-btn {
+            background: rgba(255, 255, 255, 0.15);
+            border: none;
+            color: rgba(255, 255, 255, 0.85);
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .corner-edit-btn:active {
+            background: rgba(255, 255, 255, 0.35);
+            transform: scale(0.92);
+        }
+
+        .balance-label {
+            font-size: 12px;
+            opacity: 0.75;
+            margin-bottom: 6px;
+        }
+
+        .balance-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+
+        .balance-amount {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .eye-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .card-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            opacity: 0.9;
+            border-top: 1px solid rgba(255,255,255,0.15);
+            padding-top: 12px;
+        }
+
+        .bonus-badge {
+            background-color: rgba(0, 0, 0, 0.25);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        /* БЫСТРЫЕ ДЕЙСТВИЯ */
+        .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            padding: 8px 20px 20px;
+        }
+
+        .action-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .action-icon {
+            width: 54px;
+            height: 54px;
+            background-color: white;
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: #9e0059;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.04);
+        }
+
+        .action-label {
+            font-size: 12px;
+            color: #333;
+            font-weight: 500;
+            text-align: center;
+        }
+
+        /* ПЛИТКИ СЕРВИСОВ */
+        .services-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            padding: 0 20px 20px;
+        }
+
+        .service-box {
+            background-color: white;
+            padding: 14px 16px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+            cursor: pointer;
+        }
+
+        .service-box i {
+            font-size: 20px;
+            color: #9e0059;
+        }
+
+        .service-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #222;
+        }
+
+        .service-sub {
+            font-size: 11px;
+            color: #888;
+        }
+
+        /* ИСТОРИЯ ОПЕРАЦИЙ */
+        .history-section {
+            background-color: white;
+            border-radius: 24px 24px 0 0;
+            padding: 20px;
+            min-height: 250px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .section-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        .see-all {
+            font-size: 13px;
+            color: #9e0059;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .transaction-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .tx-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tx-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            background-color: #f7e6f0;
+            color: #9e0059;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .tx-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #222;
+        }
+
+        .tx-category {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .tx-amount {
+            font-size: 14px;
+            font-weight: 600;
+            color: #222;
+        }
+
+        .tx-amount.positive {
+            color: #19a955;
+        }
+
+        /* НИЖНЕЕ МЕНЮ */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            max-width: 414px;
+            background-color: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0 14px;
+            border-top: 1px solid #eaeaea;
+            z-index: 20;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: #999;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .nav-item i {
+            font-size: 19px;
+        }
+
+        .nav-item.active {
+            color: #9e0059;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+
+        <!-- ==========================================
+             ОКНО УСТАНОВКИ И ВВОДА ПИН-КОДА
+             ========================================== -->
+        <div class="pin-screen" id="pinScreen">
+            <div class="pin-header">
+                <div class="pin-logo">Forte</div>
+                <!-- Заголовок меняется автоматически: "Установите..." или "Введите..." -->
+                <div class="pin-title" id="pinMessage">Установите 4-значный код доступа</div>
+            </div>
+
+            <!-- Индикаторы (4 точки) -->
+            <div class="pin-dots">
+                <div class="dot" id="dot0"></div>
+                <div class="dot" id="dot1"></div>
+                <div class="dot" id="dot2"></div>
+                <div class="dot" id="dot3"></div>
+            </div>
+
+            <!-- Клавиатура с цифрами -->
+            <div class="numpad">
+                <button class="num-btn" onclick="pressDigit('1')">1</button>
+                <button class="num-btn" onclick="pressDigit('2')">2</button>
+                <button class="num-btn" onclick="pressDigit('3')">3</button>
+                <button class="num-btn" onclick="pressDigit('4')">4</button>
+                <button class="num-btn" onclick="pressDigit('5')">5</button>
+                <button class="num-btn" onclick="pressDigit('6')">6</button>
+                <button class="num-btn" onclick="pressDigit('7')">7</button>
+                <button class="num-btn" onclick="pressDigit('8')">8</button>
+                <button class="num-btn" onclick="pressDigit('9')">9</button>
+                <button class="num-btn action-key" onclick="resetSavedPin()" title="Сбросить пароль">Сброс</button>
+                <button class="num-btn" onclick="pressDigit('0')">0</button>
+                <button class="num-btn action-key" onclick="deleteLastDigit()" title="Стереть">
+                    <i class="fa-solid fa-delete-left"></i>
+                </button>
+            </div>
+
+            <button class="reset-pin-link" onclick="resetSavedPin()">Забыли или хотите сменить ПИН-код?</button>
+        </div>
+
+        <!-- ==========================================
+             ГЛАВНЫЙ ЭКРАН ПРИЛОЖЕНИЯ
+             ========================================== -->
+
+        <!-- 1. ВЕРХНЯЯ ПАНЕЛЬ -->
+        <header class="header">
+            <div class="user-profile">
+                <div class="avatar">К</div>
+                <div class="user-name">Мой Forte <i class="fa-solid fa-chevron-right" style="font-size: 12px; color: #888;"></i></div>
+            </div>
+            <div class="header-icons">
+                <i class="fa-solid fa-magnifying-glass" title="Поиск"></i>
+                <i class="fa-regular fa-bell" title="Уведомления"></i>
+                <!-- Кнопка замочка, чтобы заблокировать экран обратно -->
+                <i class="fa-solid fa-lock" onclick="lockApp()" title="Заблокировать экран"></i>
+            </div>
+        </header>
+
+        <!-- 2. ВИРТУАЛЬНАЯ КАРТА (БЕЗ ЛИШНИХ НАДПИСЕЙ, С КАРАНДАШОМ В УГЛУ) -->
+        <section class="card-section">
+            <div class="virtual-card">
+                <div class="card-top">
+                    <span class="card-title">Forte Black</span>
+                    <div class="card-top-right">
+                        <span class="card-logo">Forte</span>
+                        <!-- Маленький карандаш в углу карты -->
+                        <button class="corner-edit-btn" onclick="changeBalance()" title="Изменить баланс">
+                            <i class="fa-solid fa-pen"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Чистая стандартная подпись без подсказок -->
+                <div class="balance-label">Доступный баланс</div>
+                
+                <div class="balance-row">
+                    <div class="balance-amount" id="balanceDisplay">250 000 ₸</div>
+                    <button class="eye-btn" onclick="toggleHideBalance()" title="Скрыть/показать баланс">
+                        <i class="fa-regular fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+
+                <div class="card-bottom">
+                    <span>•• 4829 &nbsp;|&nbsp; VISA</span>
+                    <span class="bonus-badge">Б 3 450 Бонусов</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. БЫСТРЫЕ КНОПКИ -->
+        <section class="quick-actions">
+            <div class="action-item">
+                <div class="action-icon"><i class="fa-solid fa-arrow-right-arrow-left"></i></div>
+                <span class="action-label">Переводы</span>
+            </div>
+            <div class="action-item">
+                <div class="action-icon"><i class="fa-solid fa-wallet"></i></div>
+                <span class="action-label">Платежи</span>
+            </div>
+            <div class="action-item">
+                <div class="action-icon"><i class="fa-solid fa-qrcode"></i></div>
+                <span class="action-label">Forte QR</span>
+            </div>
+            <div class="action-item">
+                <div class="action-icon"><i class="fa-solid fa-bag-shopping"></i></div>
+                <span class="action-label">Маркет</span>
+            </div>
+        </section>
+
+        <!-- 4. РАЗДЕЛЫ БАНКА -->
+        <section class="services-grid">
+            <div class="service-box">
+                <i class="fa-solid fa-percent"></i>
+                <div>
+                    <div class="service-title">Кредиты</div>
+                    <div class="service-sub">Рассрочка 0-0-12</div>
+                </div>
+            </div>
+            <div class="service-box">
+                <i class="fa-solid fa-piggy-bank"></i>
+                <div>
+                    <div class="service-title">Депозиты</div>
+                    <div class="service-sub">Ставка до 15%</div>
+                </div>
+            </div>
+            <div class="service-box">
+                <i class="fa-solid fa-earth-americas"></i>
+                <div>
+                    <div class="service-title">ForteForex</div>
+                    <div class="service-sub">Обмен валют</div>
+                </div>
+            </div>
+            <div class="service-box">
+                <i class="fa-solid fa-plane-departure"></i>
+                <div>
+                    <div class="service-title">ForteTravel</div>
+                    <div class="service-sub">Билеты и туры</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. ИСТОРИЯ ОПЕРАЦИЙ -->
+        <section class="history-section">
+            <div class="section-header">
+                <span class="section-title">Последние операции</span>
+                <span class="see-all">Все</span>
+            </div>
+
+            <div class="transaction-item">
+                <div class="tx-left">
+                    <div class="tx-icon"><i class="fa-solid fa-plus"></i></div>
+                    <div>
+                        <div class="tx-name">Пополнение карты</div>
+                        <div class="tx-category">Перевод с другой карты</div>
+                    </div>
+                </div>
+                <div class="tx-amount positive">+ 50 000 ₸</div>
+            </div>
+
+            <div class="transaction-item">
+                <div class="tx-left">
+                    <div class="tx-icon"><i class="fa-solid fa-basket-shopping"></i></div>
+                    <div>
+                        <div class="tx-name">Супермаркет</div>
+                        <div class="tx-category">Покупки • Бонус +150 Б</div>
+                    </div>
+                </div>
+                <div class="tx-amount">- 12 450 ₸</div>
+            </div>
+
+            <div class="transaction-item">
+                <div class="tx-left">
+                    <div class="tx-icon"><i class="fa-solid fa-gas-pump"></i></div>
+                    <div>
+                        <div class="tx-name">АЗС Топливо</div>
+                        <div class="tx-category">Автомобиль</div>
+                    </div>
+                </div>
+                <div class="tx-amount">- 10 000 ₸</div>
+            </div>
+        </section>
+
+        <!-- 6. НИЖНЕЕ МЕНЮ -->
+        <nav class="bottom-nav">
+            <div class="nav-item active">
+                <i class="fa-solid fa-house"></i>
+                <span>Главная</span>
+            </div>
+            <div class="nav-item">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span>Переводы</span>
+            </div>
+            <div class="nav-item">
+                <i class="fa-solid fa-store"></i>
+                <span>Маркет</span>
+            </div>
+            <div class="nav-item">
+                <i class="fa-solid fa-layer-group"></i>
+                <span>Сервисы</span>
+            </div>
+            <div class="nav-item">
+                <i class="fa-regular fa-user"></i>
+                <span>Профиль</span>
+            </div>
+        </nav>
+
+    </div>
+
+    <!-- === JAVASCRIPT: ЛОГИКА ПАРОЛЯ И КАРТЫ === -->
+    <script>
+        /* --- ЧАСТЬ 1. РАБОТА С БАЛАНСОМ КАРТЫ --- */
+
+        // Загружаем сохраненный баланс из памяти браузера (или ставим 250 000 по умолчанию)
+        let savedBalance = localStorage.getItem('forte_balance');
+        let currentBalance = savedBalance !== null ? Number(savedBalance) : 250000;
+        let isHidden = false;
+
+        // Форматируем число с пробелами и знаком тенге
+        function formatMoney(amount) {
+            return Number(amount).toLocaleString('ru-RU') + ' ₸';
+        }
+
+        // Обновляем отображение суммы на экране
+        function updateCardScreen() {
+            const balanceElement = document.getElementById('balanceDisplay');
+            const eyeIcon = document.getElementById('eyeIcon');
+
+            if (isHidden) {
+                balanceElement.innerText = '•••••• ₸';
+                eyeIcon.className = 'fa-regular fa-eye-slash';
+            } else {
+                balanceElement.innerText = formatMoney(currentBalance);
+                eyeIcon.className = 'fa-regular fa-eye';
+            }
+        }
+
+        // Вызываем сразу при запуске, чтобы показать актуальный баланс
+        updateCardScreen();
+
+        // Функция изменения суммы при нажатии на маленький карандаш в углу
+        function changeBalance() {
+            let userInput = prompt("Введите новую сумму баланса:", currentBalance);
+            if (userInput === null) return; // Нажали "Отмена"
+
+            let cleanNumber = userInput.replace(/\s+/g, '');
+            if (cleanNumber !== "" && !isNaN(cleanNumber)) {
+                currentBalance = Number(cleanNumber);
+                // Сохраняем новую сумму в память устройства
+                localStorage.setItem('forte_balance', currentBalance);
+                isHidden = false;
+                updateCardScreen();
+            } else {
+                alert("Пожалуйста, введите только цифры.");
+            }
+        }
+
+        // Скрытие/показ суммы по нажатию на глазок
+        function toggleHideBalance() {
+            isHidden = !isHidden;
+            updateCardScreen();
+        }
+
+
+        /* --- ЧАСТЬ 2. ЛОГИКА 4-ЗНАЧНОГО ПИН-КОДА --- */
+
+        // Проверяем, есть ли уже сохраненный ПИН-код в памяти
+        let savedPin = localStorage.getItem('forte_pin');
+        let enteredPin = ""; // Сюда записываются нажатые цифры
+
+        const pinScreen = document.getElementById('pinScreen');
+        const pinMessage = document.getElementById('pinMessage');
+
+        // Настраиваем приветственную надпись на экране входа
+        function initPinScreen() {
+            enteredPin = "";
+            updateDots();
+            if (savedPin === null) {
+                pinMessage.innerText = "Установите 4-значный код доступа";
+            } else {
+                pinMessage.innerText = "Введите ваш код доступа";
+            }
+        }
+
+        initPinScreen();
+
+        // Нажатие на цифру (от 0 до 9)
+        function pressDigit(digit) {
+            if (enteredPin.length < 4) {
+                enteredPin += digit;
+                updateDots();
+
+                // Когда введены все 4 цифры — проверяем их с небольшой задержкой
+                if (enteredPin.length === 4) {
+                    setTimeout(processPin, 200);
+                }
+            }
+        }
+
+        // Удаление последней введенной цифры
+        function deleteLastDigit() {
+            if (enteredPin.length > 0) {
+                enteredPin = enteredPin.slice(0, -1);
+                updateDots();
+            }
+        }
+
+        // Закрашивание кружочков по мере ввода
+        function updateDots(isError = false) {
+            for (let i = 0; i < 4; i++) {
+                const dot = document.getElementById('dot' + i);
+                dot.className = 'dot'; // Сбрасываем стили
+                if (isError) {
+                    dot.classList.add('error');
+                } else if (i < enteredPin.length) {
+                    dot.classList.add('active');
+                }
+            }
+        }
+
+        // Проверка или сохранение 4-значного кода
+        function processPin() {
+            // Если пароля еще не было — сохраняем новый пароль и пускаем внутрь
+            if (savedPin === null) {
+                savedPin = enteredPin;
+                localStorage.setItem('forte_pin', savedPin);
+                pinMessage.innerText = "Код успешно установлен!";
+                setTimeout(() => {
+                    pinScreen.classList.add('hidden');
+                }, 400);
+            } 
+            // Если пароль уже был установлен ранее — сверяем его
+            else {
+                if (enteredPin === savedPin) {
+                    // Пароль верный — открываем главный экран
+                    pinScreen.classList.add('hidden');
+                } else {
+                    // Пароль неверный — подсвечиваем точки красным и очищаем ввод
+                    pinMessage.innerText = "Неверный код! Попробуйте снова";
+                    updateDots(true);
+                    setTimeout(() => {
+                        enteredPin = "";
+                        updateDots(false);
+                    }, 600);
+                }
+            }
+        }
+
+        // Функция сброса пароля (чтобы можно было придумать новый 4-значный код)
+        function resetSavedPin() {
+            localStorage.removeItem('forte_pin');
+            savedPin = null;
+            enteredPin = "";
+            updateDots();
+            pinMessage.innerText = "Придумайте новый 4-значный код";
+        }
+
+        // Функция блокировки (при клике на иконку замка в правом верхнем углу)
+        function lockApp() {
+            initPinScreen();
+            pinScreen.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
